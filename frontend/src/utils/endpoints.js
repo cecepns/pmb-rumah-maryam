@@ -1,8 +1,27 @@
 /**
  * API Endpoints Centralized Configuration
  * PMB Rumah Maryam
- * All endpoint paths MUST be defined here according to project rules.
+ * Production URL: https://api.kingcreativestudio.my.id/pmb-rumah-maryam
  */
+
+// Base Server and API URLs
+export const SERVER_BASE_URL = 
+  import.meta.env.VITE_SERVER_URL || 'https://api.kingcreativestudio.my.id/pmb-rumah-maryam';
+
+export const API_BASE_URL = 
+  import.meta.env.VITE_API_URL || `${SERVER_BASE_URL}/api`;
+
+/**
+ * Helper to construct full URL for uploaded media/files
+ * @param {string} path - relative or absolute file path
+ * @returns {string} full accessible URL
+ */
+export const getFileUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${SERVER_BASE_URL}${cleanPath}`;
+};
 
 export const API_ENDPOINTS = {
   AUTH: {
