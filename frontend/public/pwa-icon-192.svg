@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#831843"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#grad)"/>
+  <!-- House shape / roof motif -->
+  <path d="M256 100L400 230V390C400 401 391 410 380 410H132C121 410 112 401 112 390V230L256 100Z" fill="#FFF1F2"/>
+  <!-- Heart & Mother/Baby silhouette inside -->
+  <path d="M256 220C240 190 200 190 185 215C170 240 185 270 256 330C327 270 342 240 327 215C312 190 272 190 256 220Z" fill="#BE185D"/>
+  <circle cx="256" cy="180" r="24" fill="#BE185D"/>
+</svg>
