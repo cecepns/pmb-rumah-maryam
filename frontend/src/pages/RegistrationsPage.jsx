@@ -256,7 +256,7 @@ export default function RegistrationsPage() {
                 <tr>
                   <th className="py-3.5 px-4">Reservasi</th>
                   <th className="py-3.5 px-4">Pasien</th>
-                  <th className="py-3.5 px-4">Layanan & Homecare</th>
+                  <th className="py-3.5 px-4">Layanan</th>
                   <th className="py-3.5 px-4 text-right">Total Biaya</th>
                   <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-center">Pembayaran</th>
@@ -269,56 +269,74 @@ export default function RegistrationsPage() {
                   return (
                     <tr
                       key={visit.id}
-                      className="hover:bg-brand-50/30 transition-colors group"
+                      className="hover:bg-brand-50/30 transition-colors group cursor-pointer"
+                      onClick={(e) => {
+                        // Avoid triggering row click if clicking interactive buttons or selects
+                        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('a')) {
+                          return;
+                        }
+                        setSelectedVisitForDetail(visit);
+                        setIsDetailOpen(true);
+                      }}
                     >
-                      {/* Kode & Tanggal */}
+                      {/* Reservasi & Jadwal */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className="font-mono font-bold text-slate-800 block text-xs">
                           {visit.kode_kunjungan}
                         </span>
-                        <span className="text-[11px] text-brand-700 font-semibold block mt-0.5">
+                        <span className="text-[11px] text-slate-500 block mt-0.5">
                           {formatDateTime(visit.jadwal_kunjungan)}
                         </span>
-                        <Badge variant={visit.tipe_layanan} size="sm" className="mt-1">
-                          {visit.tipe_layanan === 'homevisit' ? 'Homevisit' : 'Klinik'}
-                        </Badge>
+                        <div className="mt-1">
+                          <Badge variant={visit.tipe_layanan} size="sm">
+                            {visit.tipe_layanan === 'homevisit' ? 'Homevisit' : 'Klinik'}
+                          </Badge>
+                        </div>
                       </td>
 
-                      {/* Pasien */}
+                      {/* Pasien (Ringkas: Nama & Kontak) */}
                       <td className="py-3.5 px-4">
-                        <span className="font-bold text-slate-900 block">
+                        <span className="font-bold text-slate-900 block truncate max-w-[180px]">
                           {visit.pasien_nama}
                         </span>
-                        <span className="text-[11px] font-mono text-slate-400 block">
-                          {visit.pasien_no_rm}
-                        </span>
-                        <span className="text-[11px] text-slate-500 block">
-                          WA: {visit.pasien_wa}
-                        </span>
-                        {visit.alamat_homevisit && (
-                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-[200px]">
-                            📍 {visit.alamat_homevisit}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                          <span className="font-mono text-slate-400">{visit.pasien_no_rm}</span>
+                          <span className="text-slate-300">•</span>
+                          <span>WA: {visit.pasien_wa}</span>
+                        </div>
                       </td>
 
-                      {/* Layanan & Transport */}
-                      <td className="py-3.5 px-4 max-w-xs">
+                      {/* Layanan (Ringkas & Bersih - Rincian lengkap ada di Detail) */}
+                      <td className="py-3.5 px-4 max-w-[240px]">
                         <div className="space-y-1">
-                          {items.map((it) => (
-                            <div key={it.id} className="text-xs text-slate-700 flex justify-between gap-2">
-                              <span>• {it.nama_layanan}</span>
-                              <span className="font-mono text-slate-500 shrink-0">
-                                {formatRupiah(it.subtotal)}
+                          {items.length > 0 ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-slate-800 text-xs truncate max-w-[170px]" title={items[0].nama_layanan}>
+                                {items[0].nama_layanan}
                               </span>
+                              {items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedVisitForDetail(visit);
+                                    setIsDetailOpen(true);
+                                  }}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-brand-50 text-brand-700 border border-brand-200 hover:bg-brand-100 transition-colors"
+                                  title="Klik untuk melihat semua layanan di modal Detail"
+                                >
+                                  +{items.length - 1} lainnya
+                                </button>
+                              )}
                             </div>
-                          ))}
-                          {Number(visit.biaya_transport) > 0 && (
-                            <div className="text-[11px] text-amber-700 font-medium flex justify-between border-t border-slate-100 pt-0.5">
-                              <span>🚗 Transport Homevisit ({visit.jarak_km || 0} km):</span>
-                              <span className="font-mono font-bold">
-                                {formatRupiah(visit.biaya_transport)}
-                              </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Belum ada layanan</span>
+                          )}
+
+                          {visit.tipe_layanan === 'homevisit' && (
+                            <div className="flex items-center gap-1 text-[11px] text-amber-700">
+                              <span>🚗 Homecare</span>
+                              {visit.jarak_km > 0 && <span className="text-slate-400">({visit.jarak_km} km)</span>}
                             </div>
                           )}
                         </div>
@@ -329,7 +347,7 @@ export default function RegistrationsPage() {
                         <span className="font-mono font-bold text-slate-900 text-sm block">
                           {formatRupiah(visit.total_biaya)}
                         </span>
-                        <span className="text-[10px] text-slate-400 uppercase">
+                        <span className="text-[10px] text-slate-400 uppercase font-medium">
                           {visit.metode_pembayaran?.replace('_', ' ')}
                         </span>
                       </td>
@@ -338,7 +356,10 @@ export default function RegistrationsPage() {
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <select
                           value={visit.status_kunjungan}
-                          onChange={(e) => handleStatusChange(visit.id, e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(visit.id, e.target.value);
+                          }}
                           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm focus:border-brand-500 focus:outline-none"
                         >
                           <option value="terjadwal">Terjadwal</option>
@@ -352,7 +373,10 @@ export default function RegistrationsPage() {
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => handleTogglePayment(visit)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePayment(visit);
+                          }}
                           className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1 mx-auto ${
                             visit.status_pembayaran === 'lunas'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
@@ -380,10 +404,13 @@ export default function RegistrationsPage() {
                           {/* 1-Click WhatsApp Button */}
                           <button
                             type="button"
-                            onClick={() => onOpenWAMessage({
-                              visit,
-                              patient: { nama: visit.pasien_nama, hp_wa: visit.pasien_wa, alamat: visit.alamat_homevisit }
-                            })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenWAMessage({
+                                visit,
+                                patient: { nama: visit.pasien_nama, hp_wa: visit.pasien_wa, alamat: visit.alamat_homevisit }
+                              });
+                            }}
                             className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-1"
                             title="Kirim Invoice / Notifikasi WhatsApp Langsung"
                           >
@@ -394,12 +421,13 @@ export default function RegistrationsPage() {
                           {/* View Detail Modal Button */}
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedVisitForDetail(visit);
                               setIsDetailOpen(true);
                             }}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                            title="Lihat Detail Invoice & Data Klinis"
+                            title="Lihat Rincian Lengkap & Data Pasien"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -407,7 +435,8 @@ export default function RegistrationsPage() {
                           {/* Delete Button */}
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setVisitToDelete(visit);
                               setIsDeleteOpen(true);
                             }}
@@ -457,7 +486,7 @@ export default function RegistrationsPage() {
           subtitle={`Pasien: ${selectedVisitForDetail.pasien_nama} (${selectedVisitForDetail.pasien_no_rm})`}
           maxWidth="max-w-2xl"
           footer={
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -484,88 +513,135 @@ export default function RegistrationsPage() {
             </div>
           }
         >
-          <div className="space-y-5">
-            {/* Summary Header */}
-            <div className="bg-gradient-to-r from-brand-50 to-pink-50 p-4 rounded-2xl border border-brand-100 flex items-center justify-between flex-wrap gap-3">
+          <div className="space-y-4">
+            {/* Header: Status & Info Kunjungan */}
+            <div className="bg-gradient-to-r from-brand-50 via-pink-50 to-purple-50 p-4 rounded-2xl border border-brand-100 flex items-center justify-between flex-wrap gap-3">
               <div>
-                <span className="text-[11px] font-bold uppercase text-brand-600 tracking-wider">
-                  Jadwal Kunjungan
+                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 block">
+                  Jadwal Kunjungan & Layanan
                 </span>
-                <p className="text-base font-bold text-slate-800">
+                <p className="text-base font-bold text-slate-900 mt-0.5">
                   {formatDateTime(selectedVisitForDetail.jadwal_kunjungan)}
                 </p>
-                <p className="text-xs text-slate-500">
-                  Bidan / Terapis: {selectedVisitForDetail.bidan_petugas || 'Bdn. Norhalimah, S.Tr.Keb'}
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Bidan / Terapis: <span className="font-semibold text-slate-800">{selectedVisitForDetail.bidan_petugas || 'Bdn. Norhalimah, S.Tr.Keb'}</span>
                 </p>
               </div>
 
-              <div className="text-right">
-                <Badge variant={selectedVisitForDetail.tipe_layanan} size="lg">
+              <div className="flex flex-col items-end gap-1.5">
+                <Badge variant={selectedVisitForDetail.tipe_layanan} size="md">
                   {selectedVisitForDetail.tipe_layanan === 'homevisit' ? 'Homevisit (Ke Rumah)' : 'Klinik PMB'}
                 </Badge>
-                <div className="mt-1">
-                  <Badge variant={selectedVisitForDetail.status_pembayaran} size="sm">
-                    {selectedVisitForDetail.status_pembayaran === 'lunas' ? 'LUNAS' : 'BELUM LUNAS'}
-                  </Badge>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTogglePayment(selectedVisitForDetail)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm flex items-center gap-1 ${
+                    selectedVisitForDetail.status_pembayaran === 'lunas'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                      : 'bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200'
+                  }`}
+                  title="Klik untuk ubah status pembayaran"
+                >
+                  {selectedVisitForDetail.status_pembayaran === 'lunas' ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>LUNAS (Klik ubah)</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-700" />
+                      <span>BELUM LUNAS (Klik tandai)</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Homevisit Location if applicable */}
-            {selectedVisitForDetail.tipe_layanan === 'homevisit' && (
-              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1">
-                <span className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  Alamat Homevisit:
+            {/* Data Lengkap Pasien & Kontak */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Data Lengkap Pasien
                 </span>
+                <span className="font-mono text-xs font-semibold text-brand-600">
+                  {selectedVisitForDetail.pasien_no_rm}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px]">Nama Pasien</span>
+                  <span className="font-bold text-slate-900 block text-sm">{selectedVisitForDetail.pasien_nama}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">Nomor WhatsApp Pasien</span>
+                  <a
+                    href={`https://wa.me/${selectedVisitForDetail.pasien_wa?.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 mt-0.5"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>{selectedVisitForDetail.pasien_wa}</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Alamat Lengkap & Homevisit */}
+              <div className="pt-2 border-t border-slate-200/80">
+                <span className="text-slate-400 block text-[10px] mb-0.5">Alamat / Lokasi</span>
                 <p className="text-xs text-slate-700 font-medium">
-                  {selectedVisitForDetail.alamat_homevisit || selectedVisitForDetail.pasien_alamat || 'Alamat tidak tersedia'}
+                  📍 {selectedVisitForDetail.alamat_homevisit || selectedVisitForDetail.pasien_alamat || 'Alamat klinik / tidak ada rincian'}
                 </p>
-                {selectedVisitForDetail.jarak_km > 0 && (
-                  <p className="text-[11px] text-slate-500">
-                    Jarak: {selectedVisitForDetail.jarak_km} km | Biaya Transport: {formatRupiah(selectedVisitForDetail.biaya_transport)}
+                {selectedVisitForDetail.tipe_layanan === 'homevisit' && selectedVisitForDetail.jarak_km > 0 && (
+                  <p className="text-[11px] text-amber-700 font-semibold mt-1">
+                    🚗 Jarak Homevisit: {selectedVisitForDetail.jarak_km} km | Transport Fee: {formatRupiah(selectedVisitForDetail.biaya_transport)}
                   </p>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* Items Breakdown Table */}
+            {/* Rincian Lengkap Tagihan Layanan */}
             <div>
-              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Rincian Tagihan Layanan
-              </h5>
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Rincian Tagihan Layanan
+                </h5>
+                <span className="text-[11px] text-slate-400">
+                  Metode: <strong className="text-slate-700 uppercase">{selectedVisitForDetail.metode_pembayaran?.replace('_', ' ')}</strong>
+                </span>
+              </div>
+              <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <thead className="bg-slate-100/80 text-slate-600 font-semibold border-b border-slate-200">
                     <tr>
-                      <th className="py-2.5 px-3 text-left">Layanan</th>
+                      <th className="py-2.5 px-3 text-left">Nama Layanan</th>
                       <th className="py-2.5 px-3 text-center">Qty</th>
                       <th className="py-2.5 px-3 text-right">Tarif</th>
                       <th className="py-2.5 px-3 text-right">Subtotal</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {(selectedVisitForDetail.items || []).map((it) => (
                       <tr key={it.id}>
-                        <td className="py-2.5 px-3 font-medium text-slate-800">{it.nama_layanan}</td>
+                        <td className="py-2.5 px-3 font-medium text-slate-900">{it.nama_layanan}</td>
                         <td className="py-2.5 px-3 text-center">{it.qty}</td>
-                        <td className="py-2.5 px-3 text-right font-mono">{formatRupiah(it.tarif)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{formatRupiah(it.subtotal)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600">{formatRupiah(it.tarif)}</td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{formatRupiah(it.subtotal)}</td>
                       </tr>
                     ))}
                     {Number(selectedVisitForDetail.biaya_transport) > 0 && (
-                      <tr className="bg-amber-50/50">
-                        <td colSpan={3} className="py-2.5 px-3 font-semibold text-amber-800">
-                          Biaya Transport Homevisit ({selectedVisitForDetail.jarak_km || 0} km)
+                      <tr className="bg-amber-50/60">
+                        <td colSpan={3} className="py-2.5 px-3 font-semibold text-amber-900">
+                          🚗 Biaya Transport Homevisit ({selectedVisitForDetail.jarak_km || 0} km)
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-800">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-900">
                           {formatRupiah(selectedVisitForDetail.biaya_transport)}
                         </td>
                       </tr>
                     )}
-                    <tr className="bg-slate-50/80 font-bold text-sm">
-                      <td colSpan={3} className="py-3 px-3 text-slate-800">Total Tagihan</td>
-                      <td className="py-3 px-3 text-right font-mono text-brand-700 text-base">
+                    <tr className="bg-brand-50/70 font-bold border-t-2 border-brand-200">
+                      <td colSpan={3} className="py-3 px-3 text-slate-900 text-sm">Total Tagihan</td>
+                      <td className="py-3 px-3 text-right font-mono text-brand-700 text-base font-extrabold">
                         {formatRupiah(selectedVisitForDetail.total_biaya)}
                       </td>
                     </tr>
