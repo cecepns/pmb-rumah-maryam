@@ -1,7 +1,18 @@
 import React from 'react';
-import { Menu, Plus, QrCode, Clock, Sparkles } from 'lucide-react';
+import { Menu, Plus, QrCode, Clock, Sparkles, LogOut, User } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { getInitials } from '@/utils/formatters';
 
 export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) {
+  const { user, logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout(true);
+    navigate('/login');
+  };
+
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -40,7 +51,7 @@ export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) 
           </div>
         </div>
 
-        {/* Right: Quick Action Buttons */}
+        {/* Right: Quick Action Buttons & User Menu */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* QRIS / Transfer Button */}
           <button
@@ -60,8 +71,46 @@ export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) 
             className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-md shadow-brand-500/20 hover:shadow-brand-500/30 transition-all flex items-center gap-1.5 active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Layanan / Homevisit</span>
+            <span className="hidden xs:inline">+ Layanan</span>
+            <span className="xs:hidden">+ Layanan</span>
           </button>
+
+          {/* User Profile Pill */}
+          {user && (
+            <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-100 to-pink-100 text-brand-700 border border-brand-200/80 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden shadow-sm">
+                  {user.foto_url ? (
+                    <img
+                      src={user.foto_url}
+                      alt={user.nama}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{getInitials(user.nama || user.username)}</span>
+                  )}
+                </div>
+                <div className="hidden md:block text-left">
+                  <span className="text-xs font-bold text-slate-800 block truncate max-w-[120px] leading-tight">
+                    {user.nama}
+                  </span>
+                  <span className={`text-[10px] font-semibold leading-tight ${isAdmin ? 'text-purple-600' : 'text-emerald-600'}`}>
+                    {isAdmin ? 'Admin' : 'Bidan'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Logout button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 transition-colors"
+                title="Keluar (Logout)"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

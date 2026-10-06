@@ -227,4 +227,29 @@ CREATE TABLE `wa_log` (
 INSERT INTO `wa_log` (`id`, `pasien_id`, `pasien_nama`, `no_wa`, `jenis_pesan`, `pesan`, `status`) VALUES
 (1, 1, 'Bunda Siti Nurhaliza', '081234567890', 'invoice_homevisit', 'Trimakasih Bunda Siti Nurhaliza sudah reservasi layanan Homevisite dari @rumahmaryam.id\n\nBerikut Invoice layanan homevisitenya\nHari /tgl : Sabtu, 04 Oktober 2026\n\nPijat Bayi : Rp. 100.000\nPijat Laktasi : Rp. 100.000\nBiaya Transport : Rp. 25.000\n\nTotal : Rp. 225.000\n\nPembayaran bisa trf via Qris (tanpa biaya admin) atau transfer ke rekening berikut :\n\nBSI 7124826197\nAtas nama Norhalimah\n\nTrimakasih😊🙏', 'dibuka_ke_wa');
 
+-- -------------------------------------------------------------------
+-- 8. Table structure for table `users`
+-- -------------------------------------------------------------------
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `nama` VARCHAR(150) NOT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `role` ENUM('admin', 'bidan') NOT NULL DEFAULT 'bidan',
+  `no_hp` VARCHAR(30) DEFAULT NULL,
+  `foto_url` VARCHAR(255) DEFAULT NULL,
+  `is_active` TINYINT(1) DEFAULT '1',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_username` (`username`),
+  KEY `idx_role` (`role`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `users` (`id`, `username`, `nama`, `email`, `password`, `role`, `no_hp`, `foto_url`, `is_active`) VALUES
+(1, 'admin', 'Bdn. Norhalimah, S.Tr.Keb', 'norhalimah@rumahmaryam.id', '$2b$10$Jx9RuUTwmbnbLDjnrjpq3u1NTxLWYOLxVzs.htExRSzvsfMruApim', 'admin', '082350313030', NULL, 1),
+(2, 'bidan', 'Bidan Zahra, A.Md.Keb', 'zahra@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '081298765432', NULL, 1);
+
 SET FOREIGN_KEY_CHECKS = 1;

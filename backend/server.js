@@ -11,11 +11,30 @@ const mysql = require('mysql2/promise');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'pmb_rumah_maryam_jwt_secret_key_2026_super_secure';
+
+// Authentication Middleware
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ success: false, message: 'Akses ditolak: token otentikasi tidak ditemukan. Silakan login kembali.' });
+  }
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Sesi login telah kedaluwarsa atau tidak valid. Silakan login ulang.' });
+  }
+};
 
 // Middleware
 app.use(cors({
@@ -1258,6 +1277,328 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   } catch (err) {
     console.error('Upload error:', err);
     res.status(500).json({ success: false, message: 'Gagal mengunggah file' });
+  }
+});
+
+// ===================================================================
+// 8. AUTHENTICATION & USER MANAGEMENT
+// ===================================================================
+
+// POST /api/auth/login - Login user with username & password
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username dan password wajib diisi' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT * FROM users WHERE (username = ? OR email = ?) LIMIT 1',
+      [username.trim(), username.trim()]
+    );
+
+    if (!rows.length) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah' });
+    }
+
+    const user = rows[0];
+
+    if (!user.is_active) {
+      return res.status(403).json({ success: false, message: 'Akun Anda dinonaktifkan. Silakan hubungi admin / Bdn. Norhalimah' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah' });
+    }
+
+    const payload = {
+      id: user.id,
+      username: user.username,
+      nama: user.nama,
+      role: user.role
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+
+    // Clean user object
+    const { password: _, ...userData } = user;
+
+    res.json({
+      success: true,
+      message: `Selamat datang kembali, ${user.nama}!`,
+      token,
+      user: userData
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ success: false, message: 'Gagal melakukan login' });
+  }
+});
+
+// GET /api/auth/profile - Get current logged-in profile
+app.get('/api/auth/profile', verifyToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, username, nama, email, role, no_hp, foto_url, is_active, created_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
+    }
+
+    res.json({ success: true, user: rows[0] });
+  } catch (err) {
+    console.error('Profile fetch error:', err);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data profil' });
+  }
+});
+
+// PUT /api/auth/profile - Update own profile & password
+app.put('/api/auth/profile', verifyToken, async (req, res) => {
+  try {
+    const { nama, email, no_hp, current_password, new_password, foto_url } = req.body;
+
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
+    }
+    const user = rows[0];
+
+    let hashedPassword = user.password;
+    if (new_password) {
+      if (!current_password) {
+        return res.status(400).json({ success: false, message: 'Password saat ini wajib diisi untuk mengganti password baru' });
+      }
+      const isMatch = await bcrypt.compare(current_password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ success: false, message: 'Password saat ini tidak sesuai' });
+      }
+      hashedPassword = await bcrypt.hash(new_password, 10);
+    }
+
+    await pool.query(
+      `UPDATE users SET 
+        nama = COALESCE(?, nama),
+        email = COALESCE(?, email),
+        no_hp = COALESCE(?, no_hp),
+        foto_url = COALESCE(?, foto_url),
+        password = ?
+       WHERE id = ?`,
+      [
+        nama ? nama.trim() : null,
+        email ? email.trim() : null,
+        no_hp ? no_hp.trim() : null,
+        foto_url || null,
+        hashedPassword,
+        req.user.id
+      ]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT id, username, nama, email, role, no_hp, foto_url, is_active FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    res.json({ success: true, message: 'Profil berhasil diperbarui', user: updated[0] });
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui profil' });
+  }
+});
+
+// GET /api/users - List Users with Search, Role Filter & Pagination
+app.get('/api/users', verifyToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', role = '', is_active = '', sortBy = 'created_at', sortOrder = 'DESC' } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let whereSql = 'WHERE 1=1';
+    const params = [];
+
+    if (search.trim()) {
+      whereSql += ' AND (nama LIKE ? OR username LIKE ? OR email LIKE ? OR no_hp LIKE ?)';
+      const s = `%${search.trim()}%`;
+      params.push(s, s, s, s);
+    }
+
+    if (role && role !== 'semua') {
+      whereSql += ' AND role = ?';
+      params.push(role);
+    }
+
+    if (is_active !== '') {
+      whereSql += ' AND is_active = ?';
+      params.push(is_active === 'true' || is_active === '1' ? 1 : 0);
+    }
+
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total FROM users ${whereSql}`, params);
+
+    const allowedSort = ['id', 'username', 'nama', 'role', 'created_at'];
+    const sortCol = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+    const sortDir = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const [rows] = await pool.query(
+      `SELECT id, username, nama, email, role, no_hp, foto_url, is_active, created_at, updated_at
+       FROM users ${whereSql}
+       ORDER BY ${sortCol} ${sortDir}
+       LIMIT ? OFFSET ?`,
+      [...params, Number(limit), Number(offset)]
+    );
+
+    sendPaginatedResponse(res, rows, total, page, limit);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ success: false, message: 'Gagal memuat data pengguna' });
+  }
+});
+
+// GET /api/users/:id - Detail User
+app.get('/api/users/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query(
+      'SELECT id, username, nama, email, role, no_hp, foto_url, is_active, created_at, updated_at FROM users WHERE id = ?',
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error('Error fetching user detail:', err);
+    res.status(500).json({ success: false, message: 'Gagal memuat detail pengguna' });
+  }
+});
+
+// POST /api/users - Create User
+app.post('/api/users', verifyToken, async (req, res) => {
+  try {
+    const { username, nama, email, password, role = 'bidan', no_hp, foto_url } = req.body;
+
+    if (!username || !nama || !password) {
+      return res.status(400).json({ success: false, message: 'Username, nama, dan password wajib diisi' });
+    }
+
+    const [existing] = await pool.query(
+      'SELECT id FROM users WHERE username = ? OR (email IS NOT NULL AND email = ?)',
+      [username.trim(), email ? email.trim() : '']
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Username atau email sudah digunakan oleh pengguna lain' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [result] = await pool.query(
+      `INSERT INTO users (username, nama, email, password, role, no_hp, foto_url, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+      [
+        username.trim().toLowerCase(),
+        nama.trim(),
+        email ? email.trim() : null,
+        hashedPassword,
+        role || 'bidan',
+        no_hp ? no_hp.trim() : null,
+        foto_url || null
+      ]
+    );
+
+    const [newUser] = await pool.query(
+      'SELECT id, username, nama, email, role, no_hp, foto_url, is_active, created_at FROM users WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: `Pengguna ${newUser[0].nama} berhasil ditambahkan`,
+      data: newUser[0]
+    });
+  } catch (err) {
+    console.error('Error creating user:', err);
+    res.status(500).json({ success: false, message: 'Gagal menambahkan pengguna baru' });
+  }
+});
+
+// PUT /api/users/:id - Update User
+app.put('/api/users/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nama, email, password, role, no_hp, foto_url, is_active } = req.body;
+
+    const [exists] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+    if (!exists.length) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
+    }
+    const current = exists[0];
+
+    let hashedPassword = current.password;
+    if (password && password.trim()) {
+      hashedPassword = await bcrypt.hash(password.trim(), 10);
+    }
+
+    await pool.query(
+      `UPDATE users SET 
+        nama = COALESCE(?, nama),
+        email = COALESCE(?, email),
+        password = ?,
+        role = COALESCE(?, role),
+        no_hp = COALESCE(?, no_hp),
+        foto_url = COALESCE(?, foto_url),
+        is_active = COALESCE(?, is_active)
+       WHERE id = ?`,
+      [
+        nama ? nama.trim() : null,
+        email !== undefined ? (email ? email.trim() : null) : null,
+        hashedPassword,
+        role || null,
+        no_hp !== undefined ? (no_hp ? no_hp.trim() : null) : null,
+        foto_url !== undefined ? foto_url : null,
+        is_active !== undefined ? (is_active ? 1 : 0) : null,
+        id
+      ]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT id, username, nama, email, role, no_hp, foto_url, is_active, created_at FROM users WHERE id = ?',
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Data pengguna berhasil diperbarui',
+      data: updated[0]
+    });
+  } catch (err) {
+    console.error('Error updating user:', err);
+    res.status(500).json({ success: false, message: 'Gagal memperbarui pengguna' });
+  }
+});
+
+// DELETE /api/users/:id - Delete User
+app.delete('/api/users/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (Number(id) === 1 || Number(id) === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Tidak dapat menghapus akun administrator utama atau akun Anda sendiri' });
+    }
+
+    const [exists] = await pool.query('SELECT id, nama FROM users WHERE id = ?', [id]);
+    if (!exists.length) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
+    }
+
+    await pool.query('DELETE FROM users WHERE id = ?', [id]);
+    res.json({ success: true, message: `Pengguna ${exists[0].nama} berhasil dihapus` });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ success: false, message: 'Gagal menghapus pengguna' });
   }
 });
 

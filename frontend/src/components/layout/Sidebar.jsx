@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home,
   Users,
@@ -11,10 +11,24 @@ import {
   X,
   QrCode,
   Heart,
-  ChevronRight
+  ChevronRight,
+  UserCheck,
+  LogOut,
+  ShieldCheck,
+  Shield
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { getInitials } from '@/utils/formatters';
 
 export default function Sidebar({ isOpen, onClose, onOpenQris }) {
+  const navigate = useNavigate();
+  const { user, logout, isAdmin } = useAuth();
+
+  const handleLogout = () => {
+    logout(true);
+    navigate('/login');
+  };
+
   const menuItems = [
     {
       to: '/',
@@ -52,6 +66,12 @@ export default function Sidebar({ isOpen, onClose, onOpenQris }) {
       label: 'Tagihan & Pesan WA',
       icon: MessageCircle,
       description: 'Piutang & Notifikasi'
+    },
+    {
+      to: '/users',
+      label: 'Manajemen Pengguna',
+      icon: UserCheck,
+      description: 'Kelola Bidan & Admin'
     },
     {
       to: '/pengaturan',
@@ -157,31 +177,74 @@ export default function Sidebar({ isOpen, onClose, onOpenQris }) {
           })}
         </div>
 
-        {/* Quick QRIS Card & Footer */}
-        <div className="p-4 border-t border-white/10 bg-black/10">
+        {/* Footer: User Profile & Quick QRIS Card */}
+        <div className="p-3.5 border-t border-white/10 bg-black/15 space-y-2.5">
+          {/* Logged in User Card */}
+          {user && (
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2.5 flex items-center justify-between gap-2 border border-white/15">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white text-brand-700 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden shadow-inner">
+                  {user.foto_url ? (
+                    <img
+                      src={user.foto_url}
+                      alt={user.nama}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{getInitials(user.nama || user.username)}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-white block truncate">
+                      {user.nama}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-semibold ${
+                      isAdmin
+                        ? 'bg-purple-400/25 text-purple-200 border border-purple-300/30'
+                        : 'bg-emerald-400/25 text-emerald-200 border border-emerald-300/30'
+                    }`}>
+                      {isAdmin ? 'Admin' : 'Bidan'}
+                    </span>
+                    <span className="text-[10px] text-pink-200/60 truncate">
+                      @{user.username}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-1.5 rounded-xl text-pink-200/70 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                title="Keluar (Logout)"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Quick QRIS Card */}
           <button
             type="button"
             onClick={onOpenQris}
-            className="w-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-white/20 rounded-2xl p-3 flex items-center gap-3 hover:bg-white/15 transition-all text-left group"
+            className="w-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-white/15 rounded-xl p-2.5 flex items-center gap-2.5 hover:bg-white/15 transition-all text-left group"
           >
-            <div className="w-10 h-10 rounded-xl bg-white text-brand-700 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-              <QrCode className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-white text-brand-700 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+              <QrCode className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-bold text-white block truncate">
+              <span className="text-[11px] font-bold text-white block truncate">
                 QRIS & Rekening BSI
               </span>
-              <span className="text-[11px] text-pink-200 block truncate">
+              <span className="text-[10px] text-pink-200 block truncate">
                 7124826197 (Norhalimah)
               </span>
             </div>
           </button>
-
-          <div className="mt-3 text-center">
-            <p className="text-[10px] text-pink-200/50">
-              PMB Rumah Maryam &copy; {new Date().getFullYear()}
-            </p>
-          </div>
         </div>
       </aside>
     </>
