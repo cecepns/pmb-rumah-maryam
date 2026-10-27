@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   User, Phone, MapPin, Calendar, Heart, ShieldAlert,
-  MessageCircle, Plus, Edit2, Clock, CheckCircle2, AlertCircle
+  MessageCircle, Plus, Edit2, Clock, CheckCircle2, AlertCircle, Stethoscope
 } from 'lucide-react';
 import Modal from '@/components/common/Modal';
 import Badge from '@/components/common/Badge';
@@ -51,10 +51,10 @@ export default function PatientDetailModal({
       onClose={onClose}
       title={patientData ? `${patientData.nama} (${patientData.no_rm})` : 'Detail Pasien'}
       subtitle="Profil rekam medis & riwayat kunjungan layanan"
-      maxWidth="max-w-3xl"
+      maxWidth="max-w-4xl"
       footer={
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -78,7 +78,7 @@ export default function PatientDetailModal({
               <span>+ Jadwal Layanan</span>
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => {
@@ -214,36 +214,79 @@ export default function PatientDetailModal({
                   <tbody className="divide-y divide-slate-100">
                     {visits.map((v) => (
                       <tr key={v.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-2.5 px-3">
+                        <td className="py-3 px-3.5 align-top min-w-[125px]">
                           <p className="font-semibold text-slate-800">{v.kode_kunjungan}</p>
-                          <p className="text-[10px] text-slate-400">{formatDate(v.jadwal_kunjungan)}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(v.jadwal_kunjungan)}</p>
                           {v.bidan_petugas && (
-                            <p className="text-[10px] text-brand-700 font-semibold mt-0.5 truncate max-w-[130px]">{v.bidan_petugas}</p>
+                            <p className="text-[10px] text-brand-700 font-semibold mt-1 truncate max-w-[130px] bg-brand-50/80 px-1.5 py-0.5 rounded border border-brand-100 inline-block">
+                              {v.bidan_petugas}
+                            </p>
                           )}
                         </td>
-                        <td className="py-2.5 px-3">
+                        <td className="py-3 px-3.5 align-top min-w-[95px]">
                           <Badge variant={v.tipe_layanan} size="sm">
                             {v.tipe_layanan === 'homevisit' ? 'Homevisit' : 'Klinik'}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-3 max-w-[260px]">
-                          <p className="font-semibold text-slate-800">{v.daftar_layanan || '-'}</p>
+                        <td className="py-3 px-3.5 align-top min-w-[280px] max-w-sm sm:max-w-md">
+                          <p className="font-bold text-slate-800">{v.daftar_layanan || '-'}</p>
                           {(v.hasil_pemeriksaan || v.catatan_kunjungan) && (
-                            <div className="mt-1 p-1.5 rounded-lg bg-emerald-50/90 border border-emerald-200/70 text-[11px] text-slate-700 leading-snug">
-                              <span className="font-bold text-emerald-800 block text-[10px] uppercase">Hasil Rekam Medis:</span>
-                              <span className="line-clamp-3">{v.hasil_pemeriksaan || v.catatan_kunjungan}</span>
+                            <div className="mt-2 p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/80 text-[11px] text-slate-700 leading-relaxed shadow-xs">
+                              <span className="font-bold text-emerald-800 block text-[10px] uppercase tracking-wide mb-1 flex items-center gap-1">
+                                <Stethoscope className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                Hasil Rekam Medis:
+                              </span>
+                              <div className="whitespace-pre-line break-words text-slate-800 font-medium leading-relaxed">
+                                {v.hasil_pemeriksaan || v.catatan_kunjungan}
+                              </div>
+
+                              {/* Vitals breakdown if available */}
+                              {(() => {
+                                let dk = {};
+                                if (v.data_klinis) {
+                                  dk = typeof v.data_klinis === 'string'
+                                    ? JSON.parse(v.data_klinis || '{}')
+                                    : (v.data_klinis || {});
+                                }
+                                const hasVitals = dk.tekanan_darah || dk.berat_badan || dk.suhu || dk.djj;
+                                if (!hasVitals) return null;
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1.5 pt-2 mt-2 border-t border-emerald-200/70 text-[10px]">
+                                    {dk.tekanan_darah && (
+                                      <span className="px-1.5 py-0.5 rounded bg-white text-rose-700 font-bold border border-rose-200 shadow-2xs">
+                                        TD: {dk.tekanan_darah}
+                                      </span>
+                                    )}
+                                    {dk.berat_badan && (
+                                      <span className="px-1.5 py-0.5 rounded bg-white text-blue-700 font-bold border border-blue-200 shadow-2xs">
+                                        BB: {dk.berat_badan} kg
+                                      </span>
+                                    )}
+                                    {dk.suhu && (
+                                      <span className="px-1.5 py-0.5 rounded bg-white text-amber-700 font-bold border border-amber-200 shadow-2xs">
+                                        Suhu: {dk.suhu} °C
+                                      </span>
+                                    )}
+                                    {dk.djj && (
+                                      <span className="px-1.5 py-0.5 rounded bg-white text-purple-700 font-bold border border-purple-200 shadow-2xs">
+                                        DJJ: {dk.djj} bpm
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800">
+                        <td className="py-3 px-3.5 align-top text-right font-bold font-mono text-slate-800 whitespace-nowrap">
                           {formatRupiah(v.total_biaya)}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td className="py-3 px-3.5 align-top text-center whitespace-nowrap">
                           <Badge variant={v.status_kunjungan} size="sm">
                             {v.status_kunjungan}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td className="py-3 px-3.5 align-top text-center whitespace-nowrap">
                           <Badge variant={v.status_pembayaran} size="sm">
                             {v.status_pembayaran === 'lunas' ? 'Lunas' : 'Belum Lunas'}
                           </Badge>
