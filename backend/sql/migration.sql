@@ -8,6 +8,8 @@
 -- 3. Penambahan data akun Bidan Pelaksana (Megananda, Am.Keb & Rizqi Amaliyah Putri, Am.Keb)
 -- ===================================================================
 
+-- Pilih database jika belum dipilih (bisa disesuaikan dengan nama database server Anda):
+CREATE DATABASE IF NOT EXISTS `pmb_rumah_maryam` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `pmb_rumah_maryam`;
 
 SET NAMES utf8mb4;
@@ -16,7 +18,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -------------------------------------------------------------------
 -- 1. Tambah Kolom hasil_pemeriksaan pada tabel kunjungan (Safe / Idempotent)
 -- -------------------------------------------------------------------
-SET @dbname = DATABASE();
+SET @dbname = IFNULL(DATABASE(), 'pmb_rumah_maryam');
 SET @tablename = "kunjungan";
 SET @columnname = "hasil_pemeriksaan";
 SET @preparedStatement = (SELECT IF(
