@@ -7,6 +7,8 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
+import logo from '@/assets/logo.png';
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,11 +64,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10 space-y-6">
         {/* Brand Card Header */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-brand-600 to-brand-500 text-white flex items-center justify-center mx-auto shadow-xl shadow-brand-500/25 border-2 border-white">
-            <div className="relative">
-              <Heart className="w-8 h-8 text-pink-200 fill-pink-200/50" />
-              <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[8px] border-b-white"></span>
-            </div>
+          <div className="w-20 h-20 rounded-3xl bg-white p-2 shadow-xl shadow-brand-500/20 border-2 border-brand-100 flex items-center justify-center mx-auto">
+            <img src={logo} alt="PMB Rumah Maryam" className="w-full h-full object-contain" />
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 border border-brand-200/80 text-[11px] font-bold text-brand-700">
             <Sparkles className="w-3.5 h-3.5 text-brand-600" />

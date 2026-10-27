@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     nama_praktik: 'PMB Rumah Maryam',
     tagline: 'Praktik Mandiri Bidan & Homecare Spesialis Ibu & Anak',
-    bidan_nama: 'Bdn. Norhalimah, S.Tr.Keb',
+    bidan_nama: 'Bdn. Norhalimah, S.Keb',
     sipb: 'SIPB. 503/446/PMB/2024',
     alamat: 'Jl. Manunggal No. 12, Banjarmasin',
     no_wa: '6282350313030',

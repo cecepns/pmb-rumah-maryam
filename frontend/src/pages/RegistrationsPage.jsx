@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import {
   CalendarCheck, Plus, Search, MessageCircle, MapPin,
   Clock, CheckCircle2, XCircle, AlertCircle, Trash2, Eye,
-  Building, Home, CreditCard, Sparkles, Filter
+  Building, Home, CreditCard, Sparkles, Filter, Stethoscope, Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import confetti from 'canvas-confetti';
@@ -13,6 +13,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Badge from '@/components/common/Badge';
 import Modal from '@/components/common/Modal';
 import { SkeletonTable, EmptyState, ErrorState } from '@/components/common/LoadingState';
+import ExamRecordModal from '@/components/registrations/ExamRecordModal';
 import { request } from '@/utils/request';
 import { API_ENDPOINTS } from '@/utils/endpoints';
 import { formatRupiah, formatDate, formatDateTime, getInitials } from '@/utils/formatters';
@@ -39,6 +40,10 @@ export default function RegistrationsPage() {
   // Detail Modal
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedVisitForDetail, setSelectedVisitForDetail] = useState(null);
+
+  // Exam Record Modal
+  const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+  const [selectedVisitForExam, setSelectedVisitForExam] = useState(null);
 
   // Delete Dialog
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -257,6 +262,7 @@ export default function RegistrationsPage() {
                   <th className="py-3.5 px-4">Reservasi</th>
                   <th className="py-3.5 px-4">Pasien</th>
                   <th className="py-3.5 px-4">Layanan</th>
+                  <th className="py-3.5 px-4">Hasil Periksa</th>
                   <th className="py-3.5 px-4 text-right">Total Biaya</th>
                   <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-center">Pembayaran</th>
@@ -340,6 +346,44 @@ export default function RegistrationsPage() {
                             </div>
                           )}
                         </div>
+                      </td>
+
+                      {/* Hasil Pemeriksaan Medis */}
+                      <td className="py-3.5 px-4 max-w-[210px]">
+                        {visit.hasil_pemeriksaan ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedVisitForExam(visit);
+                              setIsExamModalOpen(true);
+                            }}
+                            className="text-left group/exam block"
+                            title="Klik untuk melihat / edit hasil pemeriksaan"
+                          >
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover/exam:bg-emerald-100 transition-colors">
+                              <Stethoscope className="w-3 h-3 text-emerald-600" />
+                              <span>Hasil Tercatat</span>
+                            </span>
+                            <p className="text-[11px] text-slate-700 truncate mt-1 max-w-[190px] font-medium">
+                              {visit.hasil_pemeriksaan}
+                            </p>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedVisitForExam(visit);
+                              setIsExamModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200/80 transition-colors shadow-sm"
+                            title="Catat hasil pemeriksaan fisik dan rekam medis pasien"
+                          >
+                            <Stethoscope className="w-3.5 h-3.5 text-brand-600" />
+                            <span>+ Catat Hasil</span>
+                          </button>
+                        )}
                       </td>
 
                       {/* Total Biaya */}
@@ -524,7 +568,7 @@ export default function RegistrationsPage() {
                   {formatDateTime(selectedVisitForDetail.jadwal_kunjungan)}
                 </p>
                 <p className="text-xs text-slate-600 mt-0.5">
-                  Bidan / Terapis: <span className="font-semibold text-slate-800">{selectedVisitForDetail.bidan_petugas || 'Bdn. Norhalimah, S.Tr.Keb'}</span>
+                  Bidan / Terapis: <span className="font-semibold text-slate-800">{selectedVisitForDetail.bidan_petugas || 'Bdn. Norhalimah, S.Keb'}</span>
                 </p>
               </div>
 
@@ -650,16 +694,119 @@ export default function RegistrationsPage() {
               </div>
             </div>
 
+            {/* Hasil Pemeriksaan & Rekam Medis Pasien */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/60 via-brand-50/40 to-pink-50/50 border border-brand-100 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-900 flex items-center gap-1.5">
+                  <Stethoscope className="w-4 h-4 text-brand-600" />
+                  <span>Hasil Pemeriksaan & Rekam Medis</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedVisitForExam(selectedVisitForDetail);
+                    setIsExamModalOpen(true);
+                  }}
+                  className="px-3 py-1 rounded-lg text-xs font-bold text-brand-700 bg-white hover:bg-brand-50 border border-brand-200 shadow-sm transition-all flex items-center gap-1"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>{selectedVisitForDetail.hasil_pemeriksaan ? 'Edit Pemeriksaan' : '+ Catat Pemeriksaan'}</span>
+                </button>
+              </div>
+
+              {selectedVisitForDetail.hasil_pemeriksaan ? (
+                <div className="bg-white/90 p-3 rounded-xl border border-brand-100 text-xs space-y-2">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Hasil Pemeriksaan / Diagnosa:</span>
+                    <p className="text-xs text-slate-800 font-medium whitespace-pre-line mt-0.5">
+                      {selectedVisitForDetail.hasil_pemeriksaan}
+                    </p>
+                  </div>
+
+                  {(() => {
+                    const dk = typeof selectedVisitForDetail.data_klinis === 'string'
+                      ? JSON.parse(selectedVisitForDetail.data_klinis || '{}')
+                      : (selectedVisitForDetail.data_klinis || {});
+                    return (
+                      <>
+                        {(dk.tekanan_darah || dk.berat_badan || dk.suhu || dk.djj) && (
+                          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-[11px]">
+                            {dk.tekanan_darah && (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-semibold border border-rose-200">
+                                TD: {dk.tekanan_darah}
+                              </span>
+                            )}
+                            {dk.berat_badan && (
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                                BB: {dk.berat_badan}
+                              </span>
+                            )}
+                            {dk.suhu && (
+                              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+                                Suhu: {dk.suhu}
+                              </span>
+                            )}
+                            {dk.djj && (
+                              <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold border border-purple-200">
+                                DJJ: {dk.djj}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {dk.tindakan_edukasi && (
+                          <div className="pt-1 border-t border-slate-100">
+                            <span className="text-[10px] font-bold uppercase text-slate-400 block">Tindakan & Edukasi:</span>
+                            <p className="text-xs text-slate-700">{dk.tindakan_edukasi}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="p-3 text-center bg-white/70 rounded-xl border border-dashed border-brand-200">
+                  <p className="text-xs text-slate-500 mb-2">Belum ada catatan hasil pemeriksaan fisik atau diagnosa untuk kunjungan ini.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedVisitForExam(selectedVisitForDetail);
+                      setIsExamModalOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    <span>Catat Hasil Pemeriksaan Sekarang</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Notes / Clinical Data */}
             {selectedVisitForDetail.catatan_kunjungan && (
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <span className="font-bold text-slate-700 block mb-0.5">Catatan Bidan:</span>
+                <span className="font-bold text-slate-700 block mb-0.5">Catatan Tambahan:</span>
                 <p className="text-slate-600">{selectedVisitForDetail.catatan_kunjungan}</p>
               </div>
             )}
           </div>
         </Modal>
       )}
+
+      {/* Exam Record Modal */}
+      <ExamRecordModal
+        isOpen={isExamModalOpen}
+        onClose={() => {
+          setIsExamModalOpen(false);
+          setSelectedVisitForExam(null);
+        }}
+        visit={selectedVisitForExam}
+        onSuccess={(updatedVisit) => {
+          fetchVisits();
+          if (selectedVisitForDetail && selectedVisitForDetail.id === updatedVisit.id) {
+            setSelectedVisitForDetail(prev => ({ ...prev, ...updatedVisit }));
+          }
+        }}
+      />
 
       {/* Confirm Delete Dialog */}
       <ConfirmDialog

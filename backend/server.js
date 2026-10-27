@@ -87,6 +87,54 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
+// Auto-check and ensure database schema & seed data
+async function ensureDatabaseSchema() {
+  try {
+    const conn = await pool.getConnection();
+    try {
+      // 1. Check if column hasil_pemeriksaan exists in kunjungan
+      const [cols] = await conn.query("SHOW COLUMNS FROM kunjungan LIKE 'hasil_pemeriksaan'");
+      if (!cols.length) {
+        await conn.query("ALTER TABLE kunjungan ADD COLUMN hasil_pemeriksaan TEXT DEFAULT NULL AFTER catatan_kunjungan");
+        console.log('✅ Added hasil_pemeriksaan column to kunjungan table');
+      }
+
+      // 2. Ensure users table exists
+      await conn.query(`CREATE TABLE IF NOT EXISTS users (
+        id INT NOT NULL AUTO_INCREMENT,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        nama VARCHAR(150) NOT NULL,
+        email VARCHAR(100) DEFAULT NULL,
+        password VARCHAR(255) NOT NULL,
+        role ENUM('admin', 'bidan') NOT NULL DEFAULT 'bidan',
+        no_hp VARCHAR(30) DEFAULT NULL,
+        foto_url VARCHAR(255) DEFAULT NULL,
+        is_active TINYINT(1) DEFAULT '1',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_username (username),
+        KEY idx_role (role)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+
+      // 3. Ensure default admin & bidan accounts
+      await conn.query(`INSERT INTO users (id, username, nama, email, password, role, no_hp, is_active) VALUES
+        (1, 'admin', 'Bdn. Norhalimah, S.Keb', 'norhalimah@rumahmaryam.id', '$2b$10$Jx9RuUTwmbnbLDjnrjpq3u1NTxLWYOLxVzs.htExRSzvsfMruApim', 'admin', '082350313030', 1),
+        (2, 'megananda', 'Megananda, Am.Keb', 'megananda@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '082150001001', 1),
+        (3, 'rizqi', 'Rizqi Amaliyah Putri, Am.Keb', 'rizqi@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '082150001002', 1)
+        ON DUPLICATE KEY UPDATE nama = VALUES(nama), role = VALUES(role), no_hp = VALUES(no_hp)`);
+
+      // 4. Update klinik_config
+      await conn.query("UPDATE klinik_config SET bidan_nama = 'Bdn. Norhalimah, S.Keb' WHERE id = 1");
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    console.warn('Database schema ensure warning:', err.message);
+  }
+}
+ensureDatabaseSchema();
+
 // Helper for standardized pagination response
 const sendPaginatedResponse = (res, data, total, page, limit, extra = {}) => {
   const totalPages = Math.ceil(total / limit) || 1;
@@ -699,7 +747,8 @@ app.post('/api/kunjungan', async (req, res) => {
     const {
       pasien_id, tipe_layanan = 'klinik', jadwal_kunjungan,
       alamat_homevisit = '', jarak_km = 0, biaya_transport = 0,
-      bidan_petugas = 'Bdn. Norhalimah, S.Tr.Keb', catatan_kunjungan = '',
+      bidan_petugas = 'Bdn. Norhalimah, S.Keb', catatan_kunjungan = '',
+      hasil_pemeriksaan = '',
       data_klinis = {}, items = [],
       status_pembayaran = 'belum_lunas', metode_pembayaran = 'transfer_bsi'
     } = req.body;
@@ -752,8 +801,8 @@ app.post('/api/kunjungan', async (req, res) => {
         kode_kunjungan, pasien_id, tipe_layanan, jadwal_kunjungan,
         alamat_homevisit, jarak_km, biaya_transport, subtotal_layanan, total_biaya,
         status_kunjungan, status_pembayaran, metode_pembayaran,
-        waktu_pembayaran, bidan_petugas, catatan_kunjungan, data_klinis
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'terjadwal', ?, ?, ?, ?, ?, ?)`,
+        waktu_pembayaran, bidan_petugas, catatan_kunjungan, hasil_pemeriksaan, data_klinis
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'terjadwal', ?, ?, ?, ?, ?, ?, ?)`,
       [
         kode_kunjungan,
         pasien_id,
@@ -769,6 +818,7 @@ app.post('/api/kunjungan', async (req, res) => {
         status_pembayaran === 'lunas' ? new Date() : null,
         bidan_petugas,
         catatan_kunjungan,
+        hasil_pemeriksaan || null,
         JSON.stringify(data_klinis || {})
       ]
     );
@@ -848,7 +898,7 @@ app.put('/api/kunjungan/:id', async (req, res) => {
 
     const {
       tipe_layanan, jadwal_kunjungan, alamat_homevisit, jarak_km,
-      biaya_transport, bidan_petugas, catatan_kunjungan,
+      biaya_transport, bidan_petugas, catatan_kunjungan, hasil_pemeriksaan,
       status_kunjungan, status_pembayaran, metode_pembayaran,
       data_klinis, items
     } = req.body;
@@ -914,6 +964,7 @@ app.put('/api/kunjungan/:id', async (req, res) => {
         biaya_transport = ?, subtotal_layanan = ?, total_biaya = ?,
         status_kunjungan = ?, status_pembayaran = ?, metode_pembayaran = ?,
         waktu_pembayaran = ?, bidan_petugas = ?, catatan_kunjungan = ?,
+        hasil_pemeriksaan = COALESCE(?, hasil_pemeriksaan),
         data_klinis = COALESCE(?, data_klinis)
        WHERE id = ?`,
       [
@@ -930,6 +981,7 @@ app.put('/api/kunjungan/:id', async (req, res) => {
         waktu_pembayaran,
         bidan_petugas !== undefined ? bidan_petugas : currentVisit.bidan_petugas,
         catatan_kunjungan !== undefined ? catatan_kunjungan : currentVisit.catatan_kunjungan,
+        hasil_pemeriksaan !== undefined ? hasil_pemeriksaan : null,
         data_klinis ? JSON.stringify(data_klinis) : null,
         id
       ]
@@ -1016,6 +1068,91 @@ app.put('/api/kunjungan/:id/status-pembayaran', async (req, res) => {
   } catch (err) {
     console.error('Error changing payment status:', err);
     res.status(500).json({ success: false, message: 'Gagal mengubah status pembayaran' });
+  }
+});
+
+// PUT /api/kunjungan/:id/hasil-pemeriksaan - Catat / Update Hasil Pemeriksaan & Rekam Medis Kunjungan
+app.put('/api/kunjungan/:id/hasil-pemeriksaan', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hasil_pemeriksaan, catatan_kunjungan, data_klinis, status_kunjungan } = req.body;
+
+    const [exists] = await pool.query(
+      'SELECT id, status_kunjungan, catatan_kunjungan, hasil_pemeriksaan, data_klinis FROM kunjungan WHERE id = ?',
+      [id]
+    );
+    if (!exists.length) {
+      return res.status(404).json({ success: false, message: 'Data kunjungan tidak ditemukan' });
+    }
+    const current = exists[0];
+
+    const newStatus = status_kunjungan || current.status_kunjungan;
+    let mergedKlinis = current.data_klinis;
+    if (data_klinis) {
+      const prev = typeof current.data_klinis === 'string' ? JSON.parse(current.data_klinis || '{}') : (current.data_klinis || {});
+      mergedKlinis = JSON.stringify({ ...prev, ...data_klinis });
+    }
+
+    await pool.query(
+      `UPDATE kunjungan SET 
+        hasil_pemeriksaan = ?,
+        catatan_kunjungan = COALESCE(?, catatan_kunjungan),
+        data_klinis = ?,
+        status_kunjungan = ?
+       WHERE id = ?`,
+      [
+        hasil_pemeriksaan !== undefined ? hasil_pemeriksaan : current.hasil_pemeriksaan,
+        catatan_kunjungan !== undefined ? catatan_kunjungan : current.catatan_kunjungan,
+        mergedKlinis,
+        newStatus,
+        id
+      ]
+    );
+
+    const [updated] = await pool.query(
+      `SELECT k.*, p.nama as pasien_nama, p.hp_wa as pasien_wa, p.no_rm as pasien_no_rm
+       FROM kunjungan k
+       JOIN pasien p ON k.pasien_id = p.id
+       WHERE k.id = ?`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Hasil pemeriksaan rekam medis berhasil disimpan',
+      data: updated[0]
+    });
+  } catch (err) {
+    console.error('Error updating exam notes:', err);
+    res.status(500).json({ success: false, message: 'Gagal menyimpan hasil pemeriksaan' });
+  }
+});
+
+// GET /api/bidan - Daftar Bidan Pelaksana & Petugas Aktif
+app.get('/api/bidan', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, username, nama, role, no_hp, foto_url FROM users WHERE is_active = 1 ORDER BY CASE WHEN role = 'admin' THEN 1 ELSE 2 END, nama ASC"
+    );
+    const defaultList = [
+      { id: 1, username: 'admin', nama: 'Bdn. Norhalimah, S.Keb', role: 'admin' },
+      { id: 2, username: 'megananda', nama: 'Megananda, Am.Keb', role: 'bidan' },
+      { id: 3, username: 'rizqi', nama: 'Rizqi Amaliyah Putri, Am.Keb', role: 'bidan' },
+    ];
+    res.json({
+      success: true,
+      data: rows && rows.length ? rows : defaultList
+    });
+  } catch (err) {
+    console.error('Error fetching bidan list:', err);
+    res.json({
+      success: true,
+      data: [
+        { id: 1, username: 'admin', nama: 'Bdn. Norhalimah, S.Keb', role: 'admin' },
+        { id: 2, username: 'megananda', nama: 'Megananda, Am.Keb', role: 'bidan' },
+        { id: 3, username: 'rizqi', nama: 'Rizqi Amaliyah Putri, Am.Keb', role: 'bidan' },
+      ]
+    });
   }
 });
 

@@ -20,6 +20,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/utils/formatters';
 
+import logo from '@/assets/logo.png';
+
 export default function Sidebar({ isOpen, onClose, onOpenQris }) {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
@@ -98,20 +100,16 @@ export default function Sidebar({ isOpen, onClose, onOpenQris }) {
         }`}
       >
         {/* Brand Header */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-inner shrink-0">
-              {/* Roof & Heart motif */}
-              <div className="relative">
-                <Heart className="w-6 h-6 text-pink-300 fill-pink-300/40" />
-                <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-white"></span>
-              </div>
+            <div className="w-12 h-12 rounded-2xl bg-white p-1 shadow-md shadow-brand-900/30 flex items-center justify-center shrink-0 border border-white/30">
+              <img src={logo} alt="Logo PMB Rumah Maryam" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-lg text-white tracking-wide leading-tight">
+              <h1 className="font-display font-bold text-base text-white tracking-wide leading-tight">
                 Rumah Maryam
               </h1>
-              <p className="text-[10px] text-pink-200/80 font-medium tracking-wider uppercase mt-0.5">
+              <p className="text-[10px] text-pink-200/90 font-medium tracking-wider uppercase mt-0.5">
                 Praktik Mandiri Bidan
               </p>
             </div>

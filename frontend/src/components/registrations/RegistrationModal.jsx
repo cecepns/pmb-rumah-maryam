@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
   Calendar, Clock, MapPin, User, Plus, Trash2, Home,
-  Building, CheckCircle2, MessageCircle, AlertCircle, Sparkles
+  Building, CheckCircle2, MessageCircle, AlertCircle, Sparkles,
+  Stethoscope, Activity, FileText, ChevronDown, ChevronUp, Check
 } from 'lucide-react';
 import Modal from '@/components/common/Modal';
 import { request } from '@/utils/request';
 import { API_ENDPOINTS } from '@/utils/endpoints';
-import { formatRupiah } from '@/utils/formatters';
+import { formatRupiah, formatDate } from '@/utils/formatters';
 
 export default function RegistrationModal({
   isOpen,
@@ -26,7 +27,28 @@ export default function RegistrationModal({
   const [alamatHomevisit, setAlamatHomevisit] = useState('');
   const [jarakKm, setJarakKm] = useState('');
   const [biayaTransport, setBiayaTransport] = useState(25000);
-  const [bidanPetugas, setBidanPetugas] = useState('Bdn. Norhalimah, S.Tr.Keb');
+
+  // Bidan / Terapis Bertugas state
+  const [bidanPetugas, setBidanPetugas] = useState('Bdn. Norhalimah, S.Keb');
+  const [bidanList, setBidanList] = useState([
+    { id: 1, nama: 'Bdn. Norhalimah, S.Keb', role: 'admin' },
+    { id: 2, nama: 'Megananda, Am.Keb', role: 'bidan' },
+    { id: 3, nama: 'Rizqi Amaliyah Putri, Am.Keb', role: 'bidan' },
+  ]);
+  const [isCustomBidan, setIsCustomBidan] = useState(false);
+  const [customBidanText, setCustomBidanText] = useState('');
+
+  // Patient medical history state
+  const [patientHistory, setPatientHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
+  // Examination / Hasil Pemeriksaan fields
+  const [hasilPemeriksaan, setHasilPemeriksaan] = useState('');
+  const [tekananDarah, setTekananDarah] = useState('');
+  const [beratBadan, setBeratBadan] = useState('');
+  const [keluhanUtama, setKeluhanUtama] = useState('');
+  const [tindakanEdukasi, setTindakanEdukasi] = useState('');
   const [catatanKunjungan, setCatatanKunjungan] = useState('');
 
   // Selected Services List (Item rows: { layanan_id, nama_layanan, tarif, qty, subtotal })
@@ -63,6 +85,28 @@ export default function RegistrationModal({
     }
   }, [isOpen]);
 
+  // Fetch medical history for selected patient
+  const fetchPatientHistory = async (patientId) => {
+    if (!patientId) {
+      setPatientHistory([]);
+      return;
+    }
+    try {
+      setIsLoadingHistory(true);
+      const res = await request.get(API_ENDPOINTS.PASIEN.DETAIL(patientId));
+      if (res.success && res.data?.kunjungan) {
+        setPatientHistory(res.data.kunjungan);
+      } else {
+        setPatientHistory([]);
+      }
+    } catch (err) {
+      console.warn('Could not load patient history:', err);
+      setPatientHistory([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   // Handle preselected patient
   useEffect(() => {
     if (preselectedPatient?.id) {
@@ -70,15 +114,17 @@ export default function RegistrationModal({
       if (preselectedPatient.alamat) {
         setAlamatHomevisit(preselectedPatient.alamat);
       }
+      fetchPatientHistory(preselectedPatient.id);
     }
   }, [preselectedPatient]);
 
   const loadInitialData = async () => {
     try {
-      const [resPatients, resServices, resConfig] = await Promise.all([
+      const [resPatients, resServices, resConfig, resBidan] = await Promise.all([
         request.get(API_ENDPOINTS.PASIEN.LIST, { limit: 100 }),
         request.get(API_ENDPOINTS.LAYANAN.LIST, { limit: 100, is_active: 1 }),
-        request.get(API_ENDPOINTS.CONFIG.GET)
+        request.get(API_ENDPOINTS.CONFIG.GET),
+        request.get(API_ENDPOINTS.BIDAN.LIST).catch(() => ({ success: false }))
       ]);
 
       if (resPatients.success) setPatients(resPatients.data);
@@ -88,6 +134,9 @@ export default function RegistrationModal({
         if (resConfig.data.default_transport_fee) {
           setBiayaTransport(Number(resConfig.data.default_transport_fee));
         }
+      }
+      if (resBidan.success && resBidan.data?.length > 0) {
+        setBidanList(resBidan.data);
       }
 
       // Add 1 default service if none selected
@@ -107,13 +156,14 @@ export default function RegistrationModal({
     }
   };
 
-  // When patient selection changes, auto-fill address
+  // When patient selection changes, auto-fill address & fetch past history
   const handlePatientChange = (patientId) => {
     setSelectedPatientId(patientId);
     const p = patients.find(x => x.id.toString() === patientId.toString());
     if (p && p.alamat) {
       setAlamatHomevisit(p.alamat);
     }
+    fetchPatientHistory(patientId);
   };
 
   // Add service item
@@ -188,6 +238,19 @@ export default function RegistrationModal({
     try {
       setIsLoading(true);
 
+      const finalBidan = isCustomBidan && customBidanText.trim()
+        ? customBidanText.trim()
+        : bidanPetugas;
+
+      const mergedClinical = {
+        ...clinicalData,
+        keluhan_utama: keluhanUtama,
+        tekanan_darah: tekananDarah,
+        berat_badan: beratBadan,
+        tindakan_edukasi: tindakanEdukasi,
+        hasil_pemeriksaan: hasilPemeriksaan
+      };
+
       const payload = {
         pasien_id: Number(selectedPatientId),
         tipe_layanan: tipeLayanan,
@@ -195,9 +258,10 @@ export default function RegistrationModal({
         alamat_homevisit: tipeLayanan === 'homevisit' ? alamatHomevisit : '',
         jarak_km: tipeLayanan === 'homevisit' ? Number(jarakKm) || 0 : 0,
         biaya_transport: currentTransport,
-        bidan_petugas: bidanPetugas,
+        bidan_petugas: finalBidan,
         catatan_kunjungan: catatanKunjungan,
-        data_klinis: clinicalData,
+        hasil_pemeriksaan: hasilPemeriksaan || (tekananDarah ? `TD: ${tekananDarah}` : ''),
+        data_klinis: mergedClinical,
         items: selectedItems,
         status_pembayaran: statusPembayaran,
         metode_pembayaran: metodePembayaran
@@ -282,7 +346,7 @@ export default function RegistrationModal({
               value={selectedPatientId}
               onChange={(e) => handlePatientChange(e.target.value)}
               required
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10 bg-white"
             >
               <option value="">-- Pilih dari Daftar Pasien --</option>
               {patients.map((p) => (
@@ -292,6 +356,80 @@ export default function RegistrationModal({
               ))}
             </select>
           </div>
+
+          {/* Previous Medical History Card when patient visits again */}
+          {isLoadingHistory ? (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 flex items-center gap-2">
+              <span className="w-3.5 h-3.5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></span>
+              <span>Memeriksa riwayat rekam medis pasien...</span>
+            </div>
+          ) : patientHistory.length > 0 ? (
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-pink-50/80 via-purple-50/50 to-brand-50/60 border border-brand-200/80 space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-brand-800">
+                  <Stethoscope className="w-4 h-4 text-brand-600" />
+                  <span>Riwayat Pemeriksaan Sebelumnya ({patientHistory.length} Kunjungan)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAllHistory(prev => !prev)}
+                  className="text-[11px] font-semibold text-brand-700 hover:text-brand-900 flex items-center gap-0.5 underline"
+                >
+                  {showAllHistory ? 'Tutup Rincian' : 'Lihat Riwayat'}
+                  {showAllHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+              </div>
+
+              {/* Latest Visit Summary */}
+              {(() => {
+                const latest = patientHistory[0];
+                return (
+                  <div className="text-xs text-slate-700 bg-white/90 p-2.5 rounded-lg border border-brand-100 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+                      <span>Kunjungan Terakhir: <strong className="text-slate-800">{formatDate(latest.jadwal_kunjungan)}</strong> ({latest.tipe_layanan})</span>
+                      <span>Oleh: <strong className="text-brand-700">{latest.bidan_petugas || 'Bdn. Norhalimah, S.Keb'}</strong></span>
+                    </div>
+                    {latest.daftar_layanan && (
+                      <p className="text-[11px] text-slate-600">
+                        Layanan: <span className="font-medium text-slate-800">{latest.daftar_layanan}</span>
+                      </p>
+                    )}
+                    {(latest.hasil_pemeriksaan || latest.catatan_kunjungan) && (
+                      <div className="mt-1 pt-1 border-t border-slate-100">
+                        <span className="text-[10px] uppercase font-bold text-brand-700 block">Hasil Pemeriksaan Terakhir:</span>
+                        <p className="text-xs text-slate-800 font-medium whitespace-pre-line">
+                          {latest.hasil_pemeriksaan || latest.catatan_kunjungan}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Older visits dropdown */}
+              {showAllHistory && patientHistory.length > 1 && (
+                <div className="space-y-1.5 pt-1 border-t border-brand-100 max-h-48 overflow-y-auto">
+                  {patientHistory.slice(1).map((v) => (
+                    <div key={v.id} className="text-[11px] bg-white p-2 rounded-lg border border-slate-200 space-y-0.5">
+                      <div className="flex items-center justify-between font-semibold text-slate-800">
+                        <span>{formatDate(v.jadwal_kunjungan)} — {v.daftar_layanan || v.tipe_layanan}</span>
+                        <span className="text-slate-500">{v.bidan_petugas}</span>
+                      </div>
+                      {(v.hasil_pemeriksaan || v.catatan_kunjungan) && (
+                        <p className="text-slate-600 text-[11px] italic">
+                          "{v.hasil_pemeriksaan || v.catatan_kunjungan}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : selectedPatientId ? (
+            <p className="text-[11px] text-slate-400 italic">
+              Pasien ini baru pertama kali kunjungan (belum ada riwayat sebelumnya).
+            </p>
+          ) : null}
         </div>
 
         {/* Step 2: Tipe Kunjungan (Homevisit vs Klinik) */}
@@ -492,39 +630,157 @@ export default function RegistrationModal({
         </div>
 
         {/* Step 4: Jadwal Kunjungan & Bidan Petugas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-brand-600" />
-              4. Jadwal Tanggal & Jam Kunjungan <span className="text-rose-500">*</span>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-brand-600" />
+                4. Jadwal Tanggal & Jam Kunjungan <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={jadwalKunjungan}
+                onChange={(e) => setJadwalKunjungan(e.target.value)}
+                required
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10 bg-white"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Bidan / Terapis Bertugas</span>
+                <span className="text-[10px] font-normal text-brand-600">Pilih cepat:</span>
+              </label>
+
+              {/* Quick Click Badges for Midwives as requested */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {bidanList.map((b) => {
+                  const isSelected = !isCustomBidan && bidanPetugas === b.nama;
+                  return (
+                    <button
+                      key={b.id || b.nama}
+                      type="button"
+                      onClick={() => {
+                        setBidanPetugas(b.nama);
+                        setIsCustomBidan(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 ring-brand-300 scale-[1.02]'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-brand-300'
+                      }`}
+                    >
+                      <span>{b.role === 'admin' ? '🌸' : '👩‍⚕️'}</span>
+                      <span>{b.nama}</span>
+                      {isSelected && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setIsCustomBidan(prev => !prev)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                    isCustomBidan
+                      ? 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-300'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                  }`}
+                >
+                  ✍️ Ketik Manual
+                </button>
+              </div>
+
+              {isCustomBidan && (
+                <div className="pt-1 animate-fade-in">
+                  <input
+                    type="text"
+                    value={customBidanText}
+                    onChange={(e) => setCustomBidanText(e.target.value)}
+                    placeholder="Ketik nama bidan / terapis bertugas..."
+                    className="w-full rounded-xl border border-amber-300 bg-amber-50/30 px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Step 5: Hasil Pemeriksaan & Catatan Medis (Revisi Klien) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 via-pink-50/30 to-purple-50/30 border border-slate-200/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Stethoscope className="w-4 h-4 text-brand-600" />
+              <span>5. Catatan Rekam Medis & Hasil Pemeriksaan</span>
             </label>
-            <input
-              type="datetime-local"
-              value={jadwalKunjungan}
-              onChange={(e) => setJadwalKunjungan(e.target.value)}
-              required
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+            <span className="text-[11px] text-slate-400 font-medium">
+              (Bisa diisi sekarang atau setelah periksa)
+            </span>
+          </div>
+
+          {/* Quick Vital Signs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                <Activity className="w-3.5 h-3.5 text-rose-500" />
+                Tekanan Darah / Tensi:
+              </label>
+              <input
+                type="text"
+                value={tekananDarah}
+                onChange={(e) => setTekananDarah(e.target.value)}
+                placeholder="misal: 120/80 mmHg"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                <Activity className="w-3.5 h-3.5 text-blue-500" />
+                Berat Badan (BB):
+              </label>
+              <input
+                type="text"
+                value={beratBadan}
+                onChange={(e) => setBeratBadan(e.target.value)}
+                placeholder="misal: 62 kg / Bayi 4.5 kg"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Hasil Pemeriksaan & Diagnosa */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-700 block">
+              Hasil Pemeriksaan Fisik, Diagnosa & Keluhan:
+            </label>
+            <textarea
+              rows={2}
+              value={hasilPemeriksaan}
+              onChange={(e) => setHasilPemeriksaan(e.target.value)}
+              placeholder="Contoh: Kondisi ibu baik, involusi rahim 2 jari bawah pusat, lochea serosa normal. Bayi relaks setelah pijat bayi, BAB/BAK lancar."
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
             />
           </div>
 
+          {/* Tindakan, Anjuran & Terapi */}
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Bidan / Terapis Bertugas
+            <label className="text-xs font-semibold text-slate-700 block">
+              Tindakan, Anjuran & Terapi Bidan:
             </label>
             <input
               type="text"
-              value={bidanPetugas}
-              onChange={(e) => setBidanPetugas(e.target.value)}
-              placeholder="Contoh: Bdn. Norhalimah, S.Tr.Keb"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+              value={tindakanEdukasi}
+              onChange={(e) => setTindakanEdukasi(e.target.value)}
+              placeholder="Contoh: Edukasi ASI eksklusif, senam nifas mandiri, vitamin diminum teratur"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
             />
           </div>
         </div>
 
-        {/* Step 5: Pembayaran & Opsi WhatsApp */}
+        {/* Step 6: Pembayaran & Opsi WhatsApp */}
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-            5. Status Pembayaran & Notifikasi Pasien
+            6. Status Pembayaran & Notifikasi Pasien
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

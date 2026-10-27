@@ -217,14 +217,23 @@ export default function PatientDetailModal({
                         <td className="py-2.5 px-3">
                           <p className="font-semibold text-slate-800">{v.kode_kunjungan}</p>
                           <p className="text-[10px] text-slate-400">{formatDate(v.jadwal_kunjungan)}</p>
+                          {v.bidan_petugas && (
+                            <p className="text-[10px] text-brand-700 font-semibold mt-0.5 truncate max-w-[130px]">{v.bidan_petugas}</p>
+                          )}
                         </td>
                         <td className="py-2.5 px-3">
                           <Badge variant={v.tipe_layanan} size="sm">
                             {v.tipe_layanan === 'homevisit' ? 'Homevisit' : 'Klinik'}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-3 max-w-[200px] truncate text-slate-700">
-                          {v.daftar_layanan || '-'}
+                        <td className="py-2.5 px-3 max-w-[260px]">
+                          <p className="font-semibold text-slate-800">{v.daftar_layanan || '-'}</p>
+                          {(v.hasil_pemeriksaan || v.catatan_kunjungan) && (
+                            <div className="mt-1 p-1.5 rounded-lg bg-emerald-50/90 border border-emerald-200/70 text-[11px] text-slate-700 leading-snug">
+                              <span className="font-bold text-emerald-800 block text-[10px] uppercase">Hasil Rekam Medis:</span>
+                              <span className="line-clamp-3">{v.hasil_pemeriksaan || v.catatan_kunjungan}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-800">
                           {formatRupiah(v.total_biaya)}

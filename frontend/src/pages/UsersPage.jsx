@@ -155,6 +155,33 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Info Card: Perbedaan Role & Panduan Mengubah Nama Bidan */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200/80 text-xs space-y-1.5 shadow-sm">
+          <div className="flex items-center gap-2 font-bold text-purple-900">
+            <span className="p-1 rounded-lg bg-purple-200 text-purple-800">👑</span>
+            <span>Akun Admin (Owner PMB)</span>
+          </div>
+          <p className="text-purple-800/90 leading-relaxed">
+            Memegang kendali penuh: mengatur info PMB & rekening bank, mengelola seluruh pengguna (tambah/edit bidan), hapus data transaksi/kunjungan, dan melihat seluruh laporan kas.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-xs space-y-1.5 shadow-sm">
+          <div className="flex items-center gap-2 font-bold text-emerald-900">
+            <span className="p-1 rounded-lg bg-emerald-200 text-emerald-800">👩‍⚕️</span>
+            <span>Akun Bidan Pelaksana / Terapis</span>
+          </div>
+          <p className="text-emerald-800/90 leading-relaxed">
+            Fokus pelayanan klinis & homevisit: mencatat hasil pemeriksaan fisik & rekam medis, melihat jadwal pasien bertugas, dan membagikan invoice WhatsApp.
+          </p>
+          <div className="pt-1 text-[11px] text-emerald-700 font-semibold flex items-center gap-1 border-t border-emerald-200/60">
+            <span>✏️ Untuk ganti nama:</span>
+            <span>Klik tombol <strong>Edit (Pensil)</strong> pada nama bidan di tabel.</span>
+          </div>
+        </div>
+      </div>
+
       {/* Control Bar: Search & Filter */}
       <div className="bg-white rounded-2xl border border-brand-100/80 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="flex-1 max-w-md">

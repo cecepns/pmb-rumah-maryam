@@ -3,6 +3,7 @@ import { Menu, Plus, QrCode, Clock, Sparkles, LogOut, User } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { getInitials } from '@/utils/formatters';
+import logo from '@/assets/logo.png';
 
 export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) {
   const { user, logout, isAdmin } = useAuth();
@@ -21,7 +22,7 @@ export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) 
   });
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-brand-100/70 px-4 sm:px-6 lg:px-8 py-3.5 transition-all">
+    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-brand-100/70 px-4 sm:px-6 lg:px-8 py-3 transition-all">
       <div className="flex items-center justify-between gap-4">
         {/* Left: Mobile Toggle & Page Info */}
         <div className="flex items-center gap-3">
@@ -33,21 +34,23 @@ export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) 
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-brand-600 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-pink-500" />
-                PMB Rumah Maryam
-              </span>
-              <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-300"></span>
-              <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
-                <Clock className="w-3 h-3 text-emerald-600" />
-                Layanan Buka (Homecare & Klinik)
-              </span>
+          <div className="flex items-center gap-2.5">
+            <img src={logo} alt="PMB Rumah Maryam" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 border border-brand-200/80 shadow-sm" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-brand-700 tracking-wide">
+                  PMB Rumah Maryam
+                </span>
+                <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
+                  <Clock className="w-3 h-3 text-emerald-600" />
+                  Layanan Buka (Homecare & Klinik)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block mt-0.5">
+                {todayFormatted}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 font-medium hidden sm:block mt-0.5">
-              {todayFormatted}
-            </p>
           </div>
         </div>
 

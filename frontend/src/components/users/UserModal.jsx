@@ -212,7 +212,7 @@ export default function UserModal({ isOpen, onClose, user = null, onSuccess }) {
             name="nama"
             value={formData.nama}
             onChange={handleChange}
-            placeholder="misal: Bdn. Norhalimah, S.Tr.Keb"
+            placeholder="misal: Bdn. Norhalimah, S.Keb"
             required
             className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
           />

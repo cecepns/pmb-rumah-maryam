@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Wallet, Plus, Search, Download, TrendingUp, TrendingDown,
-  Coins, Calendar, Trash2, Edit2, CheckCircle2, ArrowDownRight, ArrowUpRight
+  Coins, Calendar, Trash2, Edit2, CheckCircle2, ArrowDownRight, ArrowUpRight,
+  FileSpreadsheet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatCard from '@/components/common/StatCard';
@@ -22,6 +24,7 @@ export default function FinancePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Financial summary numbers from server
   const [summary, setSummary] = useState({
@@ -112,34 +115,113 @@ export default function FinancePage() {
     }
   };
 
-  // Export to CSV helper
-  const handleExportCSV = () => {
-    if (!transactions.length) {
-      toast.error('Tidak ada data untuk diekspor');
-      return;
+  // Export to Real Microsoft Excel (.xlsx) format
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      toast.loading('Menyiapkan file Excel laporan kas...', { id: 'excel-export' });
+
+      // Fetch all transactions matching current filters (up to 1000 items)
+      const res = await request.get(API_ENDPOINTS.TRANSAKSI.LIST, {
+        page: 1,
+        limit: 1000,
+        search: searchQuery,
+        tipe: filterTipe !== 'semua' ? filterTipe : '',
+        bulan: filterBulan
+      });
+
+      const dataToExport = res.success && res.data ? res.data : transactions;
+
+      if (!dataToExport || dataToExport.length === 0) {
+        toast.error('Tidak ada data transaksi untuk diekspor', { id: 'excel-export' });
+        return;
+      }
+
+      // Build worksheet rows
+      const worksheetData = [];
+
+      // 1. Header Information Block
+      worksheetData.push(['PRAKTIK MANDIRI BIDAN (PMB) RUMAH MARYAM']);
+      worksheetData.push(['LAPORAN KAS & KEUANGAN PMB']);
+      worksheetData.push([`Periode: ${filterBulan || 'Semua Transaksi'} | Tanggal Unduh: ${new Date().toLocaleString('id-ID')}`]);
+      worksheetData.push([]); // blank row
+
+      // 2. Summary Financial Block
+      worksheetData.push(['RINGKASAN LAPORAN KAS']);
+      worksheetData.push(['Total Pemasukan (Rp):', Number(summary.total_masuk || 0)]);
+      worksheetData.push(['Total Pengeluaran (Rp):', Number(summary.total_keluar || 0)]);
+      worksheetData.push(['Saldo Kas Bersih (Rp):', Number(summary.net_saldo || 0)]);
+      worksheetData.push([]); // blank row
+
+      // 3. Table Column Headers
+      worksheetData.push([
+        'No',
+        'Kode Transaksi',
+        'Tanggal',
+        'Arus Kas',
+        'Kategori',
+        'Pasien / Pihak Terkait',
+        'Keterangan & Rincian',
+        'Metode Pembayaran',
+        'Pemasukan (Rp)',
+        'Pengeluaran (Rp)'
+      ]);
+
+      // 4. Data Rows
+      dataToExport.forEach((t, idx) => {
+        const isMasuk = t.tipe === 'masuk';
+        worksheetData.push([
+          idx + 1,
+          t.kode_transaksi,
+          t.tanggal ? t.tanggal.slice(0, 10) : '',
+          isMasuk ? 'Pemasukan' : 'Pengeluaran',
+          t.kategori || '-',
+          t.pasien_nama || '-',
+          t.keterangan || '-',
+          t.metode || 'Transfer BSI',
+          isMasuk ? Number(t.jumlah) : 0,
+          !isMasuk ? Number(t.jumlah) : 0
+        ]);
+      });
+
+      // 5. Total Row
+      worksheetData.push([
+        '', '', '', '', '', '', 'TOTAL AKHIR', '',
+        Number(summary.total_masuk || 0),
+        Number(summary.total_keluar || 0)
+      ]);
+
+      // Generate worksheet & workbook
+      const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+      // Auto-fit column widths
+      ws['!cols'] = [
+        { wch: 6 },  // No
+        { wch: 18 }, // Kode Transaksi
+        { wch: 14 }, // Tanggal
+        { wch: 14 }, // Arus Kas
+        { wch: 22 }, // Kategori
+        { wch: 24 }, // Pasien / Pihak
+        { wch: 38 }, // Keterangan
+        { wch: 16 }, // Metode
+        { wch: 18 }, // Pemasukan
+        { wch: 18 }, // Pengeluaran
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Laporan Kas PMB');
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `Laporan_Kas_PMB_Rumah_Maryam_${filterBulan || dateStr}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      toast.success('Laporan kas berhasil diunduh dalam format Excel (.xlsx)! 📊', { id: 'excel-export' });
+    } catch (err) {
+      console.error('Error generating Excel:', err);
+      toast.error('Gagal membuat file Excel: ' + (err.message || 'Error'), { id: 'excel-export' });
+    } finally {
+      setIsExporting(false);
     }
-
-    const headers = ['Kode Transaksi', 'Tanggal', 'Tipe', 'Kategori', 'Keterangan', 'Pasien / Pihak', 'Jumlah (Rp)', 'Metode'];
-    const rows = transactions.map(t => [
-      t.kode_transaksi,
-      t.tanggal ? t.tanggal.slice(0, 10) : '',
-      t.tipe === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
-      `"${(t.kategori || '').replace(/"/g, '""')}"`,
-      `"${(t.keterangan || '').replace(/"/g, '""')}"`,
-      `"${(t.pasien_nama || '').replace(/"/g, '""')}"`,
-      t.jumlah,
-      `"${(t.metode || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `laporan-kas-pmb-rumah-maryam-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Laporan kas berhasil diunduh dalam format CSV!');
   };
 
   return (
@@ -157,14 +239,20 @@ export default function FinancePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Real Excel Export Button as requested */}
           <button
             type="button"
-            onClick={handleExportCSV}
-            className="px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition-all flex items-center gap-1.5"
-            title="Unduh Laporan CSV"
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
+            title="Unduh Laporan Kas dalam format Microsoft Excel (.xlsx)"
           >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Ekspor CSV</span>
+            {isExporting ? (
+              <span className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            )}
+            <span>Download Excel (.xlsx)</span>
           </button>
           <button
             type="button"

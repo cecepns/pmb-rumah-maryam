@@ -20,7 +20,7 @@ CREATE TABLE `klinik_config` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `nama_praktik` VARCHAR(150) NOT NULL DEFAULT 'PMB Rumah Maryam',
   `tagline` VARCHAR(150) DEFAULT 'Praktik Mandiri Bidan & Homecare Spesialis Ibu & Anak',
-  `bidan_nama` VARCHAR(150) DEFAULT 'Bdn. Norhalimah, S.Tr.Keb',
+  `bidan_nama` VARCHAR(150) DEFAULT 'Bdn. Norhalimah, S.Keb',
   `sipb` VARCHAR(100) DEFAULT 'SIPB. 503/446/PMB/2024',
   `alamat` TEXT,
   `no_wa` VARCHAR(30) DEFAULT '6282350313030',
@@ -35,7 +35,7 @@ CREATE TABLE `klinik_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `klinik_config` (`id`, `nama_praktik`, `tagline`, `bidan_nama`, `sipb`, `alamat`, `no_wa`, `instagram`, `bank_nama`, `bank_rekening`, `bank_atas_nama`, `qris_image_url`, `default_transport_fee`) VALUES
-(1, 'PMB Rumah Maryam', 'Praktik Mandiri Bidan & Homecare Spesialis Ibu & Anak', 'Bdn. Norhalimah, S.Tr.Keb', 'SIPB. 503/446/PMB/2024', 'Jl. Manunggal No. 12, Banjarmasin', '6282350313030', '@rumahmaryam.id', 'BSI (Bank Syariah Indonesia)', '7124826197', 'Norhalimah', '/uploads/qris.jpeg', 25000.00);
+(1, 'PMB Rumah Maryam', 'Praktik Mandiri Bidan & Homecare Spesialis Ibu & Anak', 'Bdn. Norhalimah, S.Keb', 'SIPB. 503/446/PMB/2024', 'Jl. Manunggal No. 12, Banjarmasin', '6282350313030', '@rumahmaryam.id', 'BSI (Bank Syariah Indonesia)', '7124826197', 'Norhalimah', '/uploads/qris.jpeg', 25000.00);
 
 -- -------------------------------------------------------------------
 -- 2. Table structure for table `layanan`
@@ -127,8 +127,9 @@ CREATE TABLE `kunjungan` (
   `status_pembayaran` ENUM('belum_lunas', 'lunas') NOT NULL DEFAULT 'belum_lunas',
   `metode_pembayaran` ENUM('transfer_bsi', 'qris', 'tunai') DEFAULT 'transfer_bsi',
   `waktu_pembayaran` DATETIME DEFAULT NULL,
-  `bidan_petugas` VARCHAR(150) DEFAULT NULL,
+  `bidan_petugas` VARCHAR(150) DEFAULT 'Bdn. Norhalimah, S.Keb',
   `catatan_kunjungan` TEXT,
+  `hasil_pemeriksaan` TEXT DEFAULT NULL,
   `data_klinis` JSON DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -140,11 +141,11 @@ CREATE TABLE `kunjungan` (
   CONSTRAINT `fk_kunjungan_pasien` FOREIGN KEY (`pasien_id`) REFERENCES `pasien` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `kunjungan` (`id`, `kode_kunjungan`, `pasien_id`, `tipe_layanan`, `jadwal_kunjungan`, `alamat_homevisit`, `jarak_km`, `biaya_transport`, `subtotal_layanan`, `total_biaya`, `status_kunjungan`, `status_pembayaran`, `metode_pembayaran`, `waktu_pembayaran`, `bidan_petugas`, `catatan_kunjungan`, `data_klinis`) VALUES
-(1, 'REG-202610-001', 1, 'homevisit', '2026-10-04 15:00:32', 'Komp. Pondok Sejahtera Blok B No. 4, Banjarmasin', 4.5, 25000.00, 200000.00, 225000.00, 'selesai', 'lunas', 'qris', '2026-10-04 15:30:00', 'Bdn. Norhalimah, S.Tr.Keb', 'Layanan Homevisit Pijat Bayi dan Pijat Laktasi berjalan lancar', '{\"kondisi_pemulihan\": \"Involusi rahim baik, ASI lancar, bayi sehat\", \"kunjungan_nifas_ke\": \"1\"}'),
-(2, 'REG-202610-002', 2, 'klinik', '2026-10-05 15:00:32', NULL, 0.0, 0.00, 175000.00, 175000.00, 'selesai', 'lunas', 'transfer_bsi', '2026-10-05 15:20:00', 'Bdn. Norhalimah, S.Tr.Keb', 'ANC rutin dan Prenatal Yoga Privat', '{\"hpl\": \"2026-11-17\", \"hpht\": \"2026-02-10\", \"kondisi_ibu\": \"Baik\", \"usia_kehamilan\": 34, \"hasil_pemeriksaan\": \"Tensi 110/75, DJJ 142x/mnt reguler, kepala sudah masuk PAP\"}'),
-(3, 'REG-202610-003', 3, 'klinik', '2026-10-06 15:00:32', NULL, 0.0, 0.00, 100000.00, 100000.00, 'terjadwal', 'belum_lunas', 'transfer_bsi', NULL, 'Bdn. Norhalimah, S.Tr.Keb', 'Jadwal ulang suntik KB 3 bulan', '{\"jenis_kb\": \"Suntik 3 Bulan\", \"jadwal_ulang\": \"2026-10-06\", \"tanggal_mulai\": \"2026-07-06\"}'),
-(4, 'REG-202610-004', 5, 'homevisit', '2026-10-07 15:00:32', 'Jl. Pramuka Komp. Melati Indah No. 12', 6.0, 30000.00, 300000.00, 330000.00, 'terjadwal', 'belum_lunas', 'transfer_bsi', NULL, 'Bdn. Norhalimah, S.Tr.Keb', 'Homecare Newborn Care + Pijat Bayi', '{\"terapis\": \"Bdn. Norhalimah, S.Tr.Keb\", \"usia_bayi_hari\": 10}');
+INSERT INTO `kunjungan` (`id`, `kode_kunjungan`, `pasien_id`, `tipe_layanan`, `jadwal_kunjungan`, `alamat_homevisit`, `jarak_km`, `biaya_transport`, `subtotal_layanan`, `total_biaya`, `status_kunjungan`, `status_pembayaran`, `metode_pembayaran`, `waktu_pembayaran`, `bidan_petugas`, `catatan_kunjungan`, `hasil_pemeriksaan`, `data_klinis`) VALUES
+(1, 'REG-202610-001', 1, 'homevisit', '2026-10-04 15:00:32', 'Komp. Pondok Sejahtera Blok B No. 4, Banjarmasin', 4.5, 25000.00, 200000.00, 225000.00, 'selesai', 'lunas', 'qris', '2026-10-04 15:30:00', 'Bdn. Norhalimah, S.Keb', 'Layanan Homevisit Pijat Bayi dan Pijat Laktasi berjalan lancar', 'Involusi uteri baik 2 jari bawah pusat, lochea serosa normal, ASI keluar lancar kedua payudara. Bayi relaks setelah baby massage, BAB/BAK lancar.', '{\"kondisi_pemulihan\": \"Involusi rahim baik, ASI lancar, bayi sehat\", \"kunjungan_nifas_ke\": \"1\"}'),
+(2, 'REG-202610-002', 2, 'klinik', '2026-10-05 15:00:32', NULL, 0.0, 0.00, 175000.00, 175000.00, 'selesai', 'lunas', 'transfer_bsi', '2026-10-05 15:20:00', 'Megananda, Am.Keb', 'ANC rutin dan Prenatal Yoga Privat', 'TD: 110/75 mmHg, BB: 62 kg, TFU: 30 cm, DJJ: 142x/menit reguler kuat. Presentasi kepala sudah masuk PAP. Ibu diajarkan teknik pernapasan persalinan nyaman.', '{\"hpl\": \"2026-11-17\", \"hpht\": \"2026-02-10\", \"kondisi_ibu\": \"Baik\", \"usia_kehamilan\": 34, \"hasil_pemeriksaan\": \"Tensi 110/75, DJJ 142x/mnt reguler, kepala sudah masuk PAP\"}'),
+(3, 'REG-202610-003', 3, 'klinik', '2026-10-06 15:00:32', NULL, 0.0, 0.00, 100000.00, 100000.00, 'terjadwal', 'belum_lunas', 'transfer_bsi', NULL, 'Rizqi Amaliyah Putri, Am.Keb', 'Jadwal ulang suntik KB 3 bulan', NULL, '{\"jenis_kb\": \"Suntik 3 Bulan\", \"jadwal_ulang\": \"2026-10-06\", \"tanggal_mulai\": \"2026-07-06\"}'),
+(4, 'REG-202610-004', 5, 'homevisit', '2026-10-07 15:00:32', 'Jl. Pramuka Komp. Melati Indah No. 12', 6.0, 30000.00, 300000.00, 330000.00, 'terjadwal', 'belum_lunas', 'transfer_bsi', NULL, 'Bdn. Norhalimah, S.Keb', 'Homecare Newborn Care + Pijat Bayi', NULL, '{\"terapis\": \"Bdn. Norhalimah, S.Keb\", \"usia_bayi_hari\": 10}');
 
 -- -------------------------------------------------------------------
 -- 5. Table structure for table `kunjungan_detail`
@@ -249,7 +250,8 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `users` (`id`, `username`, `nama`, `email`, `password`, `role`, `no_hp`, `foto_url`, `is_active`) VALUES
-(1, 'admin', 'Bdn. Norhalimah, S.Tr.Keb', 'norhalimah@rumahmaryam.id', '$2b$10$Jx9RuUTwmbnbLDjnrjpq3u1NTxLWYOLxVzs.htExRSzvsfMruApim', 'admin', '082350313030', NULL, 1),
-(2, 'bidan', 'Bidan Zahra, A.Md.Keb', 'zahra@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '081298765432', NULL, 1);
+(1, 'admin', 'Bdn. Norhalimah, S.Keb', 'norhalimah@rumahmaryam.id', '$2b$10$Jx9RuUTwmbnbLDjnrjpq3u1NTxLWYOLxVzs.htExRSzvsfMruApim', 'admin', '082350313030', NULL, 1),
+(2, 'megananda', 'Megananda, Am.Keb', 'megananda@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '082150001001', NULL, 1),
+(3, 'rizqi', 'Rizqi Amaliyah Putri, Am.Keb', 'rizqi@rumahmaryam.id', '$2b$10$lVwYwu5aesdiUxxKF2p.wu7xOQdNQYkFygvbkSuJsYmLj45lBv2OC', 'bidan', '082150001002', NULL, 1);
 
 SET FOREIGN_KEY_CHECKS = 1;

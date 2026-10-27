@@ -70,6 +70,11 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `/kunjungan/${id}`,
     DELETE: (id) => `/kunjungan/${id}`,
     UPDATE_PAYMENT: (id) => `/kunjungan/${id}/status-pembayaran`,
+    UPDATE_EXAM: (id) => `/kunjungan/${id}/hasil-pemeriksaan`,
+  },
+
+  BIDAN: {
+    LIST: '/bidan',
   },
 
   TRANSAKSI: {
