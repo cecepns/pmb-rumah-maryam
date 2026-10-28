@@ -1,11 +1,11 @@
 import React from 'react';
-import { Menu, Plus, QrCode, Clock, Sparkles, LogOut, User } from 'lucide-react';
+import { Menu, Plus, QrCode, Clock, Sparkles, LogOut, User, Download } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { getInitials } from '@/utils/formatters';
 import logo from '@/assets/logo.png';
 
-export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) {
+export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris, onOpenInstall }) {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -62,6 +62,19 @@ export default function Navbar({ onToggleSidebar, onOpenNewVisit, onOpenQris }) 
 
         {/* Right: Quick Action Buttons & User Menu */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Install PWA Button */}
+          {onOpenInstall && (
+            <button
+              type="button"
+              onClick={onOpenInstall}
+              className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/90 transition-all flex items-center gap-1.5 shadow-sm shrink-0 active:scale-95"
+              title="Install Aplikasi di Komputer / Tablet"
+            >
+              <Download className="w-4 h-4 text-brand-600 shrink-0" />
+              <span className="hidden xl:inline whitespace-nowrap">Install App</span>
+            </button>
+          )}
+
           {/* QRIS / Transfer Button */}
           <button
             type="button"

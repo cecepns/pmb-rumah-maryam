@@ -6,12 +6,14 @@ import Navbar from './Navbar';
 import QrisModal from '@/components/qris/QrisModal';
 import RegistrationModal from '@/components/registrations/RegistrationModal';
 import WAMessagePreviewModal from '@/components/whatsapp/WAMessagePreviewModal';
+import PwaInstallPrompt from '@/components/common/PwaInstallPrompt';
 import { request } from '@/utils/request';
 import { API_ENDPOINTS } from '@/utils/endpoints';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isQrisOpen, setIsQrisOpen] = useState(false);
+  const [isInstallOpen, setIsInstallOpen] = useState(false);
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
   const [preselectedPatient, setPreselectedPatient] = useState(null);
   const [config, setConfig] = useState({});
@@ -90,6 +92,7 @@ export default function Layout() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onOpenQris={() => setIsQrisOpen(true)}
+        onOpenInstall={() => setIsInstallOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -98,6 +101,7 @@ export default function Layout() {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onOpenNewVisit={() => handleOpenNewVisit(null)}
           onOpenQris={() => setIsQrisOpen(true)}
+          onOpenInstall={() => setIsInstallOpen(true)}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -105,6 +109,7 @@ export default function Layout() {
             context={{
               config,
               onOpenQris: () => setIsQrisOpen(true),
+              onOpenInstall: () => setIsInstallOpen(true),
               onOpenNewVisit: handleOpenNewVisit,
               onOpenWAMessage: handleOpenWAMessage,
               refreshConfig: fetchClinicConfig
@@ -118,6 +123,12 @@ export default function Layout() {
         isOpen={isQrisOpen}
         onClose={() => setIsQrisOpen(false)}
         config={config}
+      />
+
+      {/* Global PWA Install Modal */}
+      <PwaInstallPrompt
+        manualOpen={isInstallOpen}
+        onCloseManual={() => setIsInstallOpen(false)}
       />
 
       {/* Global Registration / Homevisit Modal */}

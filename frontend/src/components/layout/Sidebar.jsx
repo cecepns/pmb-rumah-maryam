@@ -15,14 +15,15 @@ import {
   UserCheck,
   LogOut,
   ShieldCheck,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/utils/formatters';
 
 import logo from '@/assets/logo.png';
 
-export default function Sidebar({ isOpen, onClose, onOpenQris }) {
+export default function Sidebar({ isOpen, onClose, onOpenQris, onOpenInstall }) {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
 
@@ -243,6 +244,28 @@ export default function Sidebar({ isOpen, onClose, onOpenQris }) {
               </span>
             </div>
           </button>
+
+          {/* PWA Install Button */}
+          {onOpenInstall && (
+            <button
+              type="button"
+              onClick={onOpenInstall}
+              className="w-full bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl p-2.5 flex items-center gap-2.5 transition-all text-left group active:scale-95"
+              title="Pasang Aplikasi di Tablet / Komputer"
+            >
+              <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                <Download className="w-4 h-4 text-pink-200" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-bold text-white block truncate">
+                  Install Aplikasi PMB
+                </span>
+                <span className="text-[10px] text-pink-200/80 block truncate">
+                  PC, Tablet & Android/iOS
+                </span>
+              </div>
+            </button>
+          )}
         </div>
       </aside>
     </>
